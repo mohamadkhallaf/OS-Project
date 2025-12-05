@@ -7,14 +7,17 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Shortest Job First (Non-Preemptive)
+ * Chooses the process with the smallest burst time among ready processes.
+ */
 public class SJF {
 
     public SimulationResult run(List<Process> processes) {
 
-        // Gantt chart timeline
         List<String> gantt = new ArrayList<>();
 
-        // Sort first by arrival time
+        // Sort processes by arrival time for predictable behavior
         processes.sort(Comparator.comparingInt(Process::getArrivalTime));
 
         int time = 0;
@@ -28,7 +31,7 @@ public class SJF {
             int currentIndex = -1;
             int shortestBurst = Integer.MAX_VALUE;
 
-            // Find the shortest job among arrived and not completed processes
+            // Pick the shortest job that has already arrived
             for (int i = 0; i < n; i++) {
                 Process p = processes.get(i);
 
@@ -41,26 +44,26 @@ public class SJF {
                 }
             }
 
-            // No process has arrived yet → idle
+            // No available process → CPU idle
             if (current == null) {
                 gantt.add("idle");
                 time++;
                 continue;
             }
 
-            // Set start and response time
+            // First time this process runs
             current.setStartTime(time);
-            current.setResponseTime(current.getStartTime() - current.getArrivalTime());
+            current.setResponseTime(time - current.getArrivalTime());
 
-            // Run full burst (NON-preemptive)
+            // Run entire burst (non-preemptive)
             for (int i = 0; i < current.getBurstTime(); i++) {
                 gantt.add(current.getPid());
                 time++;
             }
 
-            // Set completion + metrics
+            // Compute metrics
             current.setCompletionTime(time);
-            current.setTurnaroundTime(current.getCompletionTime() - current.getArrivalTime());
+            current.setTurnaroundTime(time - current.getArrivalTime());
             current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
 
             done[currentIndex] = true;
