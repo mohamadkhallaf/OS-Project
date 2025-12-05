@@ -1,0 +1,6 @@
+PID, Arrival Time, Burst Time, Priority
+P1, 0, 8, 1
+P2, 1, 4, 3
+P3, 2, 9, 2
+P4, 3, 5, 4
+P5, 6, 2, 1
