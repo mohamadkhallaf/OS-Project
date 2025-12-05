@@ -5,11 +5,11 @@ import simulation.SimulationResult;
 
 import java.util.*;
 
-public class MLQ {
+public class MLQPreemptive {
 
     private int quantum; // Foreground queue uses RR
 
-    public MLQ(int quantum) {
+    public MLQPreemptive(int quantum) {
         this.quantum = quantum;
     }
 
