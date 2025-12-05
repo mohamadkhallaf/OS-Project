@@ -1,48 +1,51 @@
 package schedulers.non_preemptive;
 
-import process.Process;
-import simulation.SimulationResult;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import process.Process;
+import simulation.SimulationResult;
 
+/**
+ * First Come First Served (FCFS) Scheduler
+ * Non-preemptive: once a process starts running, it continues until completion.
+ */
 public class FCFS {
 
     public SimulationResult run(List<Process> processes) {
 
-        // Sort processes by arrival time (FCFS rule)
+        // Sort by arrival time so the earliest process is first
         Collections.sort(processes, Comparator.comparingInt(Process::getArrivalTime));
 
-        List<String> gantt = new ArrayList<>(); // Gantt chart timeline
-        int time = 0; // simulation time
+        List<String> gantt = new ArrayList<>();
+        int time = 0;
 
         for (Process p : processes) {
 
-            // If CPU is idle until process arrives
+            // If CPU is idle before the process arrives, record the idle period
             while (time < p.getArrivalTime()) {
                 gantt.add("idle");
                 time++;
             }
 
-            // Process starts now
+            // Process starts execution
             p.setStartTime(time);
-            p.setResponseTime(p.getStartTime() - p.getArrivalTime());
+            p.setResponseTime(time - p.getArrivalTime());
 
-            // Run the entire burst time (non-preemptive)
+            // Run the entire burst (non-preemptive)
             for (int i = 0; i < p.getBurstTime(); i++) {
                 gantt.add(p.getPid());
                 time++;
             }
 
-            // Process finishes
+            // Process completes
             p.setCompletionTime(time);
-            p.setTurnaroundTime(p.getCompletionTime() - p.getArrivalTime());
+            p.setTurnaroundTime(time - p.getArrivalTime());
             p.setWaitingTime(p.getTurnaroundTime() - p.getBurstTime());
         }
 
-        // Return results
+        // Build final result
         return new SimulationResult(gantt, processes, time);
     }
 }
