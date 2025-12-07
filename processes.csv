@@ -1,6 +1,81 @@
-PID, Arrival Time, Burst Time, Priority
-P1, 0, 8, 1
-P2, 1, 4, 3
-P3, 2, 9, 2
-P4, 3, 5, 4
-P5, 6, 2, 1
+# ============================================================
+# DATASET 1 — BASIC FUNCTIONALITY TEST
+# Tests: different arrivals, mixed burst lengths, mixed priorities
+# ============================================================
+
+Dataset,PID,Arrival,Burst,Priority
+1,P1,0,8,1
+1,P2,1,4,3
+1,P3,2,9,2
+1,P4,3,5,4
+1,P5,6,2,1
+
+
+# ============================================================
+# DATASET 2 — SAME ARRIVAL TIMES (TIE-BREAKING)
+# Tests: equal arrival times, scheduler fairness, priority ordering
+# ============================================================
+
+2,A,0,5,2
+2,B,0,3,1
+2,C,0,8,3
+2,D,2,2,2
+2,E,2,1,1
+
+
+# ============================================================
+# DATASET 3 — PRIORITY TIES + PREEMPTION
+# Tests: multiple processes same priority, preemptive correctness
+# ============================================================
+
+3,P1,0,7,1
+3,P2,1,4,1
+3,P3,3,6,2
+3,P4,5,3,1
+3,P5,6,5,3
+
+
+# ============================================================
+# DATASET 4 — MLFQ STRESS TEST
+# Tests: demotion, long CPU bursts, queue switching behavior
+# ============================================================
+
+4,X,0,20,1
+4,Y,2,4,2
+4,Z,4,8,3
+4,W,6,2,1
+4,Q,10,1,2
+
+
+# ============================================================
+# DATASET 5 — IDENTICAL BURST TIMES
+# Tests: equal burst lengths, verifies SJF behavior & fairness
+# ============================================================
+
+5,A,0,5,2
+5,B,1,5,1
+5,C,2,5,3
+5,D,3,2,1
+5,E,10,2,2
+
+
+# ============================================================
+# DATASET 6 — IDLE CPU INTERVALS
+# Tests: CPU idle periods, gap handling, correct time advancement
+# ============================================================
+
+6,A,0,3,1
+6,B,10,4,2
+6,C,12,2,1
+6,D,20,5,3
+
+
+# ============================================================
+# DATASET 7 — TIGHT ROUND ROBIN QUANTUM TEST
+# Tests: extreme preemption, RR fairness, context switching
+# ============================================================
+
+7,A,0,6,1
+7,B,1,4,2
+7,C,2,3,1
+7,D,3,5,3

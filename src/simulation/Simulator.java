@@ -3,12 +3,15 @@ package simulation;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
 import process.CSVReader;
 import process.Process;
+
 import schedulers.non_preemptive.FCFS;
 import schedulers.non_preemptive.MLQNP;
 import schedulers.non_preemptive.PriorityNP;
 import schedulers.non_preemptive.SJF;
+
 import schedulers.preemptive.MLFQ;
 import schedulers.preemptive.MLQPreemptive;
 import schedulers.preemptive.PriorityPreemptive;
@@ -16,11 +19,12 @@ import schedulers.preemptive.RR;
 
 public class Simulator {
 
-    public List<Process> loadProcesses(String filePath) {
+
+    public List<Process> loadProcesses(String filePath, int dataset) {
         try {
-            return CSVReader.readProcesses(Path.of(filePath));
+            return CSVReader.readProcesses(Path.of(filePath), dataset);
         } catch (Exception e) {
-            System.out.println("Error loading CSV: " + e.getMessage());
+            System.out.println("Error loading dataset " + dataset + ": " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -33,46 +37,33 @@ public class Simulator {
         return copy;
     }
 
-    public void runAll(String filePath) {
-        List<Process> processes = loadProcesses(filePath);
+
+    public void runAll(String filePath, int dataset) {
+
+        List<Process> processes = loadProcesses(filePath, dataset);
 
         if (processes.isEmpty()) {
-            System.out.println("No processes found. Check your CSV file.");
+            System.out.println("Dataset " + dataset + " is empty or missing.");
             return;
         }
 
-        FCFS fcfs = new FCFS();
-        SimulationResult r1 = fcfs.run(copyList(processes));
-        OutputFormatter.printResults("FCFS", r1);
+        System.out.println("\n====================================================");
+        System.out.println(" RUNNING ALL SCHEDULERS FOR DATASET " + dataset);
+        System.out.println("====================================================");
 
-        SJF sjf = new SJF();
-        SimulationResult r2 = sjf.run(copyList(processes));
-        OutputFormatter.printResults("SJF (Non-Preemptive)", r2);
 
-        PriorityNP pnp = new PriorityNP();
-        SimulationResult r3 = pnp.run(copyList(processes));
-        OutputFormatter.printResults("Priority (Non-Preemptive)", r3);
+        OutputFormatter.printResults("FCFS", new FCFS().run(copyList(processes)));
+        OutputFormatter.printResults("SJF (Non-Preemptive)", new SJF().run(copyList(processes)));
+        OutputFormatter.printResults("Priority (Non-Preemptive)", new PriorityNP().run(copyList(processes)));
+        OutputFormatter.printResults("MLQ (Non-Preemptive)", new MLQNP().run(copyList(processes)));
 
-        MLQNP mlqnp = new MLQNP();
-        SimulationResult r4 = mlqnp.run(copyList(processes));
-        OutputFormatter.printResults("MLQ (Non-Preemptive)", r4);
 
-        RR rr = new RR(4);
-        SimulationResult r5 = rr.run(copyList(processes));
-        OutputFormatter.printResults("Round Robin (Quantum = 4)", r5);
+        OutputFormatter.printResults("Round Robin (q=4)", new RR(4).run(copyList(processes)));
+        OutputFormatter.printResults("Priority (Preemptive)", new PriorityPreemptive().run(copyList(processes)));
+        OutputFormatter.printResults("MLQ (Preemptive)", new MLQPreemptive(4).run(copyList(processes)));
+        OutputFormatter.printResults("MLFQ", new MLFQ().run(copyList(processes)));
 
-        PriorityPreemptive pp = new PriorityPreemptive();
-        SimulationResult r6 = pp.run(copyList(processes));
-        OutputFormatter.printResults("Priority (Preemptive)", r6);
-
-        MLQPreemptive mlq = new MLQPreemptive(4);
-        SimulationResult r7 = mlq.run(copyList(processes));
-        OutputFormatter.printResults("MLQ (Preemptive)", r7);
-
-        MLFQ mlfq = new MLFQ();
-        SimulationResult r8 = mlfq.run(copyList(processes));
-        OutputFormatter.printResults("MLFQ", r8);
-
-        System.out.println("\nAll algorithms executed successfully!");
+        System.out.println("\nCompleted Dataset " + dataset);
+        System.out.println("====================================================\n");
     }
 }
