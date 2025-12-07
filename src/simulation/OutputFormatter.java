@@ -1,55 +1,71 @@
 package simulation;
 
-import java.util.List;
+import java.util.*;
 import process.Process;
 
 public class OutputFormatter {
 
-    /**
-     * Print full results of a scheduling algorithm.
-     */
-    public static void printResults(String algorithmName, SimulationResult result) {
+    private static final String MARK = "*";
 
+    public static void printResults(String title, SimulationResult result) {
         System.out.println("\n==============================================");
-        System.out.println("       RESULTS FOR: " + algorithmName);
+        System.out.println("       RESULTS FOR: " + title);
         System.out.println("==============================================\n");
 
-        printGanttChart(result.getGanttChart());
-        printProcessTable(result.getProcesses());
-        printOverallMetrics(result);
+        printGanttTable(result);
+        printMetrics(result);
+
+        System.out.println("----------------------------------------------\n");
     }
 
+    private static void printGanttTable(SimulationResult result) {
+        List<String> gantt = result.getGanttChart();
+        List<Process> processes = result.getProcesses();
+        int totalTime = gantt.size();
 
+        System.out.println("GANTT CHART:\n");
 
-    // -----------------------------------------------------------
-    // GANTT CHART
-    // -----------------------------------------------------------
-    private static void printGanttChart(List<String> gantt) {
+        System.out.print("      ");
+        for (int t = 1; t <= totalTime; t++) {
+            System.out.printf("| %-2d", t);
+        }
+        System.out.println("|");
 
-        System.out.println("GANTT CHART:");
-        System.out.print("| ");
+        System.out.print("      ");
+        for (int t = 0; t < totalTime; t++) {
+            System.out.print("|---");
+        }
+        System.out.println("|");
 
-        for (String slot : gantt) {
-            System.out.print(slot + " | ");
+        for (Process p : processes) {
+            System.out.printf("%-5s ", p.getPid());
+
+            for (int col = 1; col <= totalTime; col++) {
+                int gIndex = col - 1;
+
+                if (gantt.get(gIndex).equals(p.getPid())) {
+                    System.out.print("| " + MARK + " ");
+                } else {
+                    System.out.print("|   ");
+                }
+            }
+            System.out.println("|");
         }
 
-        System.out.println("\nTime: 0 → " + gantt.size());
         System.out.println();
     }
 
-
-
-    // -----------------------------------------------------------
-    // PER-PROCESS TABLE
-    // -----------------------------------------------------------
-    private static void printProcessTable(List<Process> processes) {
+    private static void printMetrics(SimulationResult result) {
+        List<Process> list = result.getProcesses();
+        int n = list.size();
+        int sumWT = 0, sumTT = 0, sumRT = 0;
 
         System.out.println("PROCESS METRICS:");
-        System.out.printf("%-6s %-8s %-8s %-10s %-12s %-12s\n",
-                "PID", "Arrive", "Burst", "Waiting", "Turnaround", "Response");
+        System.out.printf("%-5s %-8s %-8s %-8s %-12s %-8s\n",
+                "PID","Arrive","Burst","Waiting","Turnaround","Response");
 
-        for (Process p : processes) {
-            System.out.printf("%-6s %-8d %-8d %-10d %-12d %-12d\n",
+        for (Process p : list) {
+            System.out.printf("%-5s %-8d %-8d %-8d %-12d %-8d\n",
                     p.getPid(),
                     p.getArrivalTime(),
                     p.getBurstTime(),
@@ -57,51 +73,27 @@ public class OutputFormatter {
                     p.getTurnaroundTime(),
                     p.getResponseTime()
             );
+
+            sumWT += p.getWaitingTime();
+            sumTT += p.getTurnaroundTime();
+            sumRT += p.getResponseTime();
         }
 
         System.out.println();
-    }
-
-
-
-    // -----------------------------------------------------------
-    // OVERALL METRICS
-    // -----------------------------------------------------------
-    private static void printOverallMetrics(SimulationResult result) {
-
-        List<Process> processes = result.getProcesses();
-        int n = processes.size();
-        int totalTime = result.getTotalTime();
-
-        double avgWT = 0, avgTT = 0, avgRT = 0;
-        int busyTime = 0;
-
-        // Calculate averages + busy time
-        for (Process p : processes) {
-            avgWT += p.getWaitingTime();
-            avgTT += p.getTurnaroundTime();
-            avgRT += p.getResponseTime();
-        }
-
-        // Count number of non-idle slots in Gantt chart
-        for (String s : result.getGanttChart()) {
-            if (!s.equals("idle")) busyTime++;
-        }
-
-        avgWT /= n;
-        avgTT /= n;
-        avgRT /= n;
-
-        double cpuUtil = (busyTime * 100.0) / totalTime;
-        double throughput = (double) n / totalTime;
-
         System.out.println("OVERALL METRICS:");
-        System.out.printf("Average Waiting Time     : %.2f\n", avgWT);
-        System.out.printf("Average Turnaround Time  : %.2f\n", avgTT);
-        System.out.printf("Average Response Time    : %.2f\n", avgRT);
-        System.out.printf("CPU Utilization          : %.2f%%\n", cpuUtil);
-        System.out.printf("Throughput               : %.4f processes/unit time\n", throughput);
+        System.out.printf("Average Waiting Time     : %.2f\n", sumWT / (double) n);
+        System.out.printf("Average Turnaround Time  : %.2f\n", sumTT / (double) n);
+        System.out.printf("Average Response Time    : %.2f\n", sumRT / (double) n);
 
-        System.out.println("\n----------------------------------------------\n");
+        long busy = result.getGanttChart()
+                .stream()
+                .filter(x -> !x.equals("idle"))
+                .count();
+
+        double utilization = (busy / (double) result.getTotalTime()) * 100;
+        System.out.printf("CPU Utilization          : %.2f%%\n", utilization);
+
+        double throughput = n / (double) result.getTotalTime();
+        System.out.printf("Throughput               : %.4f processes/unit time\n", throughput);
     }
 }

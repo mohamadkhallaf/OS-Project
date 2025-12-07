@@ -2,13 +2,11 @@ package simulation;
 
 public class Metrics {
 
-    // Per-process metrics
     private int waitingTime;
     private int turnaroundTime;
     private int responseTime;
     private int completionTime;
 
-    // Constructor
     public Metrics(int waitingTime, int turnaroundTime, int responseTime, int completionTime) {
         this.waitingTime = waitingTime;
         this.turnaroundTime = turnaroundTime;
@@ -16,7 +14,6 @@ public class Metrics {
         this.completionTime = completionTime;
     }
 
-    // Getters
     public int getWaitingTime() {
         return waitingTime;
     }
@@ -33,7 +30,6 @@ public class Metrics {
         return completionTime;
     }
 
-    // Setters (optional, if you want to update metrics later)
     public void setWaitingTime(int waitingTime) {
         this.waitingTime = waitingTime;
     }
