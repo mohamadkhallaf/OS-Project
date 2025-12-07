@@ -3,17 +3,17 @@ package main;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
-import process.Process;
 import process.CSVReader;
-
+import process.Process;
 import schedulers.non_preemptive.FCFS;
-import schedulers.non_preemptive.SJF;
 import schedulers.non_preemptive.PriorityNP;
-
+import schedulers.non_preemptive.SJF;
+import schedulers.preemptive.MLFQ;
+import schedulers.preemptive.MLQPreemptive;
+import schedulers.preemptive.PriorityPreemptive;
+import schedulers.preemptive.RR;
 import simulation.OutputFormatter;
 import simulation.SimulationResult;
-
 public class Main {
 
     public static void main(String[] args) {
@@ -32,6 +32,25 @@ public class Main {
             System.out.println("CSV file is empty or unreadable.");
             return;
         }
+        // -----------------------------------------------------------------
+// DEBUG PRINT — ADD THIS BLOCK ↓↓↓
+// -----------------------------------------------------------------
+System.out.println("\nDEBUG: Processes loaded from CSV:");
+System.out.println(Path.of("processes.csv").toAbsolutePath());  // shows the exact file used
+
+for (Process p : processes) {
+    System.out.printf(
+        "%s  arrival=%d  burst=%d  priority=%d%n",
+        p.getPid(),
+        p.getArrivalTime(),
+        p.getBurstTime(),
+        p.getPriority()
+    );
+}
+System.out.println("-------------------------------------------------\n");
+// -----------------------------------------------------------------
+// END DEBUG BLOCK
+// -----------------------------------------------------------------
 
         // -------------------------------
         // FCFS TEST
@@ -58,7 +77,51 @@ public class Main {
         OutputFormatter.printResults("Priority (Non-Preemptive)", r3);
 
         System.out.println("\n===== END OF NON-PREEMPTIVE TESTS =====\n");
+    
+    
+        // =====================================================
+        //                 PREEMPTIVE TESTS
+        // =====================================================
+
+        // *************************************
+        // 1. ROUND ROBIN
+        // *************************************
+        System.out.println("\n**** TESTING ROUND ROBIN (q=4) ****");
+        RR rr = new RR(4);
+        SimulationResult rrRes = rr.run(copy(processes));
+        OutputFormatter.printResults("Round Robin (q=4)", rrRes);
+
+
+        // *************************************
+        // 2. PREEMPTIVE PRIORITY
+        // *************************************
+        System.out.println("\n**** TESTING PRIORITY (Preemptive) ****");
+        PriorityPreemptive pp = new PriorityPreemptive();
+        SimulationResult ppRes = pp.run(copy(processes));
+        OutputFormatter.printResults("Priority (Preemptive)", ppRes);
+
+
+        // *************************************
+        // 3. MLQ PREEMPTIVE
+        // *************************************
+        System.out.println("\n**** TESTING MLQ Preemptive ****");
+        MLQPreemptive mlq = new MLQPreemptive(4); // foreground RR = 4
+        SimulationResult mlqRes = mlq.run(copy(processes));
+        OutputFormatter.printResults("MLQ (Preemptive)", mlqRes);
+
+
+        // *************************************
+        // 4. MULTI-LEVEL FEEDBACK QUEUE
+        // *************************************
+        System.out.println("\n**** TESTING MLFQ ****");
+        MLFQ mlfq = new MLFQ();
+        SimulationResult mlfqRes = mlfq.run(copy(processes));
+        OutputFormatter.printResults("MLFQ", mlfqRes);
+
+        System.out.println("\n===== END OF PREEMPTIVE TESTS =====\n");
     }
+
+    
 
     // Deep copy helper
     private static List<Process> copy(List<Process> list) {
@@ -69,3 +132,4 @@ public class Main {
         return newList;
     }
 }
+

@@ -41,13 +41,21 @@ public class MLFQ {
             }
 
             Process current = null;
+            int currentLevel = -1; // 0 = Q0, 1 = Q1, 2 = Q2
 
             // ---------------------------
             // 1. Choose queue by priority
             // ---------------------------
-            if (!Q0.isEmpty()) current = Q0.poll();
-            else if (!Q1.isEmpty()) current = Q1.poll();
-            else if (!Q2.isEmpty()) current = Q2.poll();
+            if (!Q0.isEmpty()) {
+                current = Q0.poll();
+                currentLevel = 0;
+            } else if (!Q1.isEmpty()) {
+                current = Q1.poll();
+                currentLevel = 1;
+            } else if (!Q2.isEmpty()) {
+                current = Q2.poll();
+                currentLevel = 2;
+            }
 
             // No process ready → idle
             if (current == null) {
@@ -66,22 +74,25 @@ public class MLFQ {
             // 2. Determine quantum based on the queue
             // --------------------------------------
             int quantum;
-            if (Q0.contains(current)) quantum = Q0_QUANTUM;
-            else if (Q1.contains(current)) quantum = Q1_QUANTUM;
-            else quantum = Integer.MAX_VALUE; // FCFS for Q2
+            if (currentLevel == 0) quantum = Q0_QUANTUM;
+            else if (currentLevel == 1) quantum = Q1_QUANTUM;
+            else quantum = Integer.MAX_VALUE; // FCFS for Q2 (run until completion)
 
-            // RUN the process for up to quantum time
+            // RUN the process for up to quantum time (preemptible per time unit)
             int runTime = Math.min(quantum, current.getRemainingTime());
 
             for (int i = 0; i < runTime; i++) {
                 gantt.add(current.getPid());
                 time++;
 
-                // Add arrivals during execution
+                // Add arrivals during execution (always to Q0)
                 while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
-                    Q0.add(processes.get(arrivalIndex)); // Always to Q0 first!
+                    Q0.add(processes.get(arrivalIndex));
                     arrivalIndex++;
                 }
+
+                // Optional optimization: if a newly arrived process is in Q0 and we are running from Q1/Q2,
+                // we might preempt immediately. We already re-check queues next loop iteration.
             }
 
             // Deduct CPU used
@@ -99,14 +110,15 @@ public class MLFQ {
             }
 
             // --------------------------------------------------
-            // 4. Not finished → DEMOTE to lower queue
+            // 4. Not finished → DEMOTE to lower queue based on currentLevel
             // --------------------------------------------------
-            if (quantum == Q0_QUANTUM) {
-                Q1.add(current); // From Q0 → Q1
-            } else if (quantum == Q1_QUANTUM) {
-                Q2.add(current); // From Q1 → Q2
+            if (currentLevel == 0) {
+                // used full quantum? demote to Q1. If it used less because it finished earlier, we already handled above.
+                Q1.add(current);
+            } else if (currentLevel == 1) {
+                Q2.add(current);
             } else {
-                // Q2 (FCFS) → stay in Q2 until finish
+                // Q2 (FCFS) → stay in Q2 until finished
                 Q2.add(current);
             }
         }
