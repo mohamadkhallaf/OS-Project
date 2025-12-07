@@ -6,23 +6,23 @@ import simulation.SimulationResult;
 
 public class MLFQ {
 
-    // Lecture values: Q0 = RR8, Q1 = RR16, Q2 = FCFS
     private static final int Q0_QUANTUM = 8;
     private static final int Q1_QUANTUM = 16;
 
+  
     public SimulationResult run(List<Process> originalProcesses) {
 
-        // Make fresh copies
+        // Deep copy to avoid modifying original
         List<Process> processes = new ArrayList<>();
         for (Process p : originalProcesses) processes.add(p.copy());
 
-        // Sort by arrival for predictable ordering
+        // Sort by arrival
         processes.sort(Comparator.comparingInt(Process::getArrivalTime));
 
-        // Three levels of ready queues
-        Queue<Process> Q0 = new LinkedList<>(); // Highest priority
-        Queue<Process> Q1 = new LinkedList<>(); // Medium priority
-        Queue<Process> Q2 = new LinkedList<>(); // Lowest priority (FCFS)
+        // Queues
+        Queue<Process> Q0 = new LinkedList<>();
+        Queue<Process> Q1 = new LinkedList<>();
+        Queue<Process> Q2 = new LinkedList<>();
 
         List<String> gantt = new ArrayList<>();
 
@@ -31,95 +31,128 @@ public class MLFQ {
         int n = processes.size();
         int arrivalIndex = 0;
 
-        // Continue until all processes finish
         while (completed < n) {
 
-            // Bring new arrivals into Q0
+            // Load new arrivals → ALWAYS into Q0
             while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
                 Q0.add(processes.get(arrivalIndex));
                 arrivalIndex++;
             }
 
             Process current = null;
-            int currentLevel = -1; // 0 = Q0, 1 = Q1, 2 = Q2
+            int level = -1;
 
-            // ---------------------------
-            // 1. Choose queue by priority
-            // ---------------------------
+            // Choose queue (highest priority non-empty queue)
             if (!Q0.isEmpty()) {
                 current = Q0.poll();
-                currentLevel = 0;
+                level = 0;
             } else if (!Q1.isEmpty()) {
                 current = Q1.poll();
-                currentLevel = 1;
+                level = 1;
             } else if (!Q2.isEmpty()) {
                 current = Q2.poll();
-                currentLevel = 2;
+                level = 2;
             }
 
-            // No process ready → idle
+            // If no process is ready → idle
             if (current == null) {
                 gantt.add("idle");
                 time++;
                 continue;
             }
 
-            // First time running? → response time
+            // First time running?
             if (current.getStartTime() == null) {
                 current.setStartTime(time);
                 current.setResponseTime(time - current.getArrivalTime());
             }
 
-            // --------------------------------------
-            // 2. Determine quantum based on the queue
-            // --------------------------------------
-            int quantum;
-            if (currentLevel == 0) quantum = Q0_QUANTUM;
-            else if (currentLevel == 1) quantum = Q1_QUANTUM;
-            else quantum = Integer.MAX_VALUE; // FCFS for Q2 (run until completion)
+            // ------------------------
+            // LEVEL 0 → RR (quantum 8)
+            // LEVEL 1 → RR (quantum 16)
+            // LEVEL 2 → FCFS
+            // ------------------------
 
-            // RUN the process for up to quantum time (preemptible per time unit)
-            int runTime = Math.min(quantum, current.getRemainingTime());
+            if (level == 0 || level == 1) {
 
-            for (int i = 0; i < runTime; i++) {
-                gantt.add(current.getPid());
-                time++;
+                int quantum = (level == 0) ? Q0_QUANTUM : Q1_QUANTUM;
+                int used = 0;
 
-                // Add arrivals during execution (always to Q0)
-                while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
-                    Q0.add(processes.get(arrivalIndex));
-                    arrivalIndex++;
+                while (used < quantum && current.getRemainingTime() > 0) {
+
+                    // Execute 1 time unit
+                    gantt.add(current.getPid());
+                    time++;
+                    used++;
+                    current.setRemainingTime(current.getRemainingTime() - 1);
+
+                    // Add new arrivals (ALWAYS to Q0)
+                    while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
+                        Q0.add(processes.get(arrivalIndex));
+                        arrivalIndex++;
+                    }
+
+                    // Finished inside quantum?
+                    if (current.getRemainingTime() == 0) {
+                        current.setCompletionTime(time);
+                        current.setTurnaroundTime(time - current.getArrivalTime());
+                        current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
+                        completed++;
+                        break;
+                    }
                 }
 
-                // Optional optimization: if a newly arrived process is in Q0 and we are running from Q1/Q2,
-                // we might preempt immediately. We already re-check queues next loop iteration.
-            }
+                // If not finished
+                if (current.getRemainingTime() > 0) {
+                    // FULL quantum used → DEMOTE
+                    if (used == quantum) {
+                        if (level == 0) Q1.add(current);
+                        else Q2.add(current);
+                    }
+                    // Didn't use full quantum → put back at SAME level
+                    else {
+                        if (level == 0) Q0.add(current);
+                        else Q1.add(current);
+                    }
+                }
 
-            // Deduct CPU used
-            current.setRemainingTime(current.getRemainingTime() - runTime);
-
-            // --------------------------------------------------
-            // 3. If finished → compute metrics + do NOT enqueue
-            // --------------------------------------------------
-            if (current.getRemainingTime() == 0) {
-                current.setCompletionTime(time);
-                current.setTurnaroundTime(time - current.getArrivalTime());
-                current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
-                completed++;
                 continue;
             }
 
-            // --------------------------------------------------
-            // 4. Not finished → DEMOTE to lower queue based on currentLevel
-            // --------------------------------------------------
-            if (currentLevel == 0) {
-                // used full quantum? demote to Q1. If it used less because it finished earlier, we already handled above.
-                Q1.add(current);
-            } else if (currentLevel == 1) {
-                Q2.add(current);
-            } else {
-                // Q2 (FCFS) → stay in Q2 until finished
-                Q2.add(current);
+            // ------------------------
+            // LEVEL 2 → FCFS
+            // ------------------------
+            if (level == 2) {
+
+                while (current.getRemainingTime() > 0) {
+
+                    // Preempt if Q0 has new arrivals
+                    if (!Q0.isEmpty()) {
+                        Q2.add(current);
+                        current = null;
+                        break;
+                    }
+
+                    gantt.add(current.getPid());
+                    current.setRemainingTime(current.getRemainingTime() - 1);
+                    time++;
+
+                    // Add new arrivals
+                    while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
+                        Q0.add(processes.get(arrivalIndex));
+                        arrivalIndex++;
+                    }
+
+                    if (current.getRemainingTime() == 0) {
+                        current.setCompletionTime(time);
+                        current.setTurnaroundTime(time - current.getArrivalTime());
+                        current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
+                        completed++;
+                        break;
+                    }
+                }
+
+                continue;
             }
         }
 

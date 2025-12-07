@@ -7,107 +7,79 @@ import simulation.SimulationResult;
 public class PriorityPreemptive {
 
     /**
-     * PREEMPTIVE PRIORITY SCHEDULING
-     *
-     * Rules:
-     * - Lower priority number = higher actual priority.
-     * - At EVERY time unit, choose the highest-priority process
-     *   among all processes that have arrived.
-     * - If a new higher-priority process arrives, we immediately
-     *   preempt the current one.
-     * - A process runs only for ONE time unit before re-checking.
+     * Preemptive Priority Scheduling
+     * Lower priority number = higher priority.
+     * We check priority at EVERY time unit.
      */
     public SimulationResult run(List<Process> originalProcesses) {
 
-        // Make independent copies so original list stays untouched
+        // Deep copy
         List<Process> processes = new ArrayList<>();
-        for (Process p : originalProcesses) {
-            processes.add(p.copy());
-        }
+        for (Process p : originalProcesses) processes.add(p.copy());
 
-        // Sort once by arrival time so iteration order is predictable
+        // Sort by arrival
         processes.sort(Comparator.comparingInt(Process::getArrivalTime));
 
-        List<String> gantt = new ArrayList<>();   // Timeline output
+        List<String> gantt = new ArrayList<>();
+
         int time = 0;
-        int finishedCount = 0;
-        int total = processes.size();
-        boolean[] done = new boolean[total];
+        int finished = 0;
+        int n = processes.size();
+        int arrivalIndex = 0;
 
         Process current = null;
-        int currentIndex = -1;
 
-        // Keep looping until all processes finish
-        while (finishedCount < total) {
+        while (finished < n) {
 
-            // ---------------------------------------------------------
-            // 1. Find the BEST available process at this moment
-            // ---------------------------------------------------------
-            Process bestProcess = null;
-            int bestProcessIndex = -1;
-            int bestPriority = Integer.MAX_VALUE;  // Lowest number wins
+            // 1. Add new arrivals
+            while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
+                arrivalIndex++;
+            }
 
-            for (int i = 0; i < total; i++) {
-                Process p = processes.get(i);
-
-                // Skip processes that have not arrived or are already done
-                if (done[i] || p.getArrivalTime() > time) continue;
-
-                // Find highest priority (lowest priority number)
-                if (p.getPriority() < bestPriority) {
-                    bestPriority = p.getPriority();
-                    bestProcess = p;
-                    bestProcessIndex = i;
+            // 2. Select highest-priority ready process
+            Process best = null;
+            for (Process p : processes) {
+                if (p.getArrivalTime() <= time && p.getRemainingTime() > 0) {
+                    if (best == null || p.getPriority() < best.getPriority()) {
+                        best = p;
+                    }
                 }
             }
 
-            // ---------------------------------------------------------
-            // 2. No process available → CPU idle for this time unit
-            // ---------------------------------------------------------
-            if (bestProcess == null) {
+            // No process ready → idle
+            if (best == null) {
                 gantt.add("idle");
                 time++;
                 continue;
             }
 
-            // ---------------------------------------------------------
-            // 3. Preemption check — switch CPU to new best process
-            // ---------------------------------------------------------
-            if (current != bestProcess) {
-                current = bestProcess;
-                currentIndex = bestProcessIndex;
+            // 3. Preempt immediately if needed
+            if (current != best) {
+                current = best;
 
-                // If this is the first time it runs → record its response time
+                // First time response
                 if (current.getStartTime() == null) {
                     current.setStartTime(time);
                     current.setResponseTime(time - current.getArrivalTime());
                 }
             }
 
-            // ---------------------------------------------------------
-            // 4. Run the process for ONE time unit (because it's preemptive)
-            // ---------------------------------------------------------
+            // 4. Execute for ONE time unit
             gantt.add(current.getPid());
+            current.setRemainingTime(current.getRemainingTime() - 1);
             time++;
 
-            current.setRemainingTime(current.getRemainingTime() - 1);
-
-            // ---------------------------------------------------------
-            // 5. If finished → compute performance metrics & clear CPU
-            // ---------------------------------------------------------
+            // 5. If finished → compute metrics
             if (current.getRemainingTime() == 0) {
                 current.setCompletionTime(time);
                 current.setTurnaroundTime(time - current.getArrivalTime());
                 current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
+                finished++;
 
-                done[currentIndex] = true;
-                finishedCount++;
-
-                current = null;  // CPU becomes free
+                current = null; // CPU free
             }
         }
 
-        // Return final output including Gantt chart & updated processes
         return new SimulationResult(gantt, processes, time);
     }
 }
