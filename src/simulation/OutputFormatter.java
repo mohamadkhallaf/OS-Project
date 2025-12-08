@@ -85,15 +85,18 @@ public class OutputFormatter {
         System.out.printf("Average Turnaround Time  : %.2f\n", sumTT / (double) n);
         System.out.printf("Average Response Time    : %.2f\n", sumRT / (double) n);
 
-        long busy = result.getGanttChart()
-                .stream()
-                .filter(x -> !x.equals("idle"))
-                .count();
+        List<String> gantt = result.getGanttChart();
 
-        double utilization = (busy / (double) result.getTotalTime()) * 100;
+long busy = gantt.stream()
+        .filter(x -> !x.equalsIgnoreCase("idle"))
+        .count();
+
+long total = gantt.size();
+
+double utilization = (busy * 100.0) / total;
         System.out.printf("CPU Utilization          : %.2f%%\n", utilization);
 
-        double throughput = n / (double) result.getTotalTime();
+        double throughput = n / (double) total;
         System.out.printf("Throughput               : %.4f processes/unit time\n", throughput);
     }
 }

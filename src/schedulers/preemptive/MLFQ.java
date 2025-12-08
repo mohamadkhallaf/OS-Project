@@ -6,9 +6,21 @@ import simulation.SimulationResult;
 
 public class MLFQ {
 
-    private static final int Q0_QUANTUM = 8;
-    private static final int Q1_QUANTUM = 16;
+    private final int quantum;  
 
+    public MLFQ(int quantum) {
+        this.quantum = quantum;
+    }
+    @Override
+    public String toString() {
+        return String.format(
+            "MLFQ\n" +
+            "Q0 : RR (q = %d)\n" +
+            "Q1 : RR (q = %d)\n" +
+            "Q2 : FCFS",
+            quantum, quantum
+        );
+    }
     public SimulationResult run(List<Process> originalProcesses) {
         List<Process> processes = new ArrayList<>();
         for (Process p : originalProcesses) processes.add(p.copy());
@@ -27,6 +39,7 @@ public class MLFQ {
         int arrivalIndex = 0;
 
         while (completed < n) {
+
             while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
                 Q0.add(processes.get(arrivalIndex));
                 arrivalIndex++;
@@ -57,11 +70,15 @@ public class MLFQ {
                 current.setResponseTime(time - current.getArrivalTime());
             }
 
+            // ============================
+            // Q0 and Q1 --> Round Robin
+            // ============================
             if (level == 0 || level == 1) {
-                int quantum = (level == 0) ? Q0_QUANTUM : Q1_QUANTUM;
+
                 int used = 0;
 
                 while (used < quantum && current.getRemainingTime() > 0) {
+
                     gantt.add(current.getPid());
                     time++;
                     used++;
@@ -94,8 +111,13 @@ public class MLFQ {
                 continue;
             }
 
+            // ============================
+            // Q2 --> FCFS (preempted only by Q0)
+            // ============================
             if (level == 2) {
+
                 while (current.getRemainingTime() > 0) {
+
                     if (!Q0.isEmpty()) {
                         Q2.add(current);
                         current = null;
@@ -111,7 +133,7 @@ public class MLFQ {
                         arrivalIndex++;
                     }
 
-                    if (current.getRemainingTime() == 0) {
+                    if (current != null && current.getRemainingTime() == 0) {
                         current.setCompletionTime(time);
                         current.setTurnaroundTime(time - current.getArrivalTime());
                         current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
@@ -123,6 +145,7 @@ public class MLFQ {
                 continue;
             }
         }
+
 
         return new SimulationResult(gantt, processes, time);
     }

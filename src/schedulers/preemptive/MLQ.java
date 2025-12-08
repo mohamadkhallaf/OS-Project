@@ -4,13 +4,24 @@ import java.util.*;
 import process.Process;
 import simulation.SimulationResult;
 
-public class MLQPreemptive {
+public class MLQ {
 
     private final int quantum;
 
-    public MLQPreemptive(int quantum) {
+    public MLQ(int quantum) {
         this.quantum = quantum;
     }
+    @Override
+    public String toString() {
+        return String.format(
+        "MLQ\n" +
+        "   Foreground : RR (q = %d)\n" +
+        "   Background : FCFS",
+        quantum
+    );
+}
+
+
 
     public SimulationResult run(List<Process> originalProcesses) {
         List<Process> processes = new ArrayList<>();

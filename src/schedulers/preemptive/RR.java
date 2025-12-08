@@ -6,71 +6,92 @@ import simulation.SimulationResult;
 
 public class RR {
 
-    private int quantum;
+    private final int quantum;
 
     public RR(int quantum) {
         this.quantum = quantum;
     }
 
-    public SimulationResult run(List<Process> originalProcesses) {
+    @Override
+    public String toString() {
+        return "Round Robin (q=" + quantum + ")";
+    }
+
+    public SimulationResult run(List<Process> inputProcesses) {
+
+        // Create a safe copy so original list isn't modified
         List<Process> processes = new ArrayList<>();
-        for (Process p : originalProcesses) {
+        for (Process p : inputProcesses) {
             processes.add(p.copy());
         }
 
+        // Sort by arrival time so we load them in correct order
         processes.sort(Comparator.comparingInt(Process::getArrivalTime));
 
         Queue<Process> readyQueue = new LinkedList<>();
-        List<String> gantt = new ArrayList<>();
+        List<String> ganttChart = new ArrayList<>();
 
         int time = 0;
         int completed = 0;
         int n = processes.size();
-        int arrivalIndex = 0;
+        int nextArrival = 0;
 
         while (completed < n) {
-            while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
-                readyQueue.add(processes.get(arrivalIndex));
-                arrivalIndex++;
+
+            // Add newly arrived processes to the ready queue
+            while (nextArrival < n && processes.get(nextArrival).getArrivalTime() <= time) {
+                readyQueue.offer(processes.get(nextArrival));
+                nextArrival++;
             }
 
+            // If no process is ready, CPU stays idle for this time unit
             if (readyQueue.isEmpty()) {
-                gantt.add("idle");
+                ganttChart.add("IDLE");
                 time++;
                 continue;
             }
 
+            // Fetch next process from queue
             Process current = readyQueue.poll();
 
+            // Mark first time the process gets CPU
             if (current.getStartTime() == null) {
                 current.setStartTime(time);
                 current.setResponseTime(time - current.getArrivalTime());
             }
 
-            int runTime = Math.min(quantum, current.getRemainingTime());
+            // Determine how long to run this process
+            int execTime = Math.min(quantum, current.getRemainingTime());
 
-            for (int i = 0; i < runTime; i++) {
-                gantt.add(current.getPid());
+            // Run the process for each time unit
+            for (int i = 0; i < execTime; i++) {
+                ganttChart.add(current.getPid());
                 time++;
 
-                while (arrivalIndex < n && processes.get(arrivalIndex).getArrivalTime() <= time) {
-                    readyQueue.add(processes.get(arrivalIndex));
-                    arrivalIndex++;
+                // Check if new processes arrive during execution
+                while (nextArrival < n && processes.get(nextArrival).getArrivalTime() <= time) {
+                    readyQueue.offer(processes.get(nextArrival));
+                    nextArrival++;
                 }
             }
 
-            current.setRemainingTime(current.getRemainingTime() - runTime);
+            // Update remaining burst time
+            current.setRemainingTime(current.getRemainingTime() - execTime);
 
+            // If finished, compute stats
             if (current.getRemainingTime() == 0) {
                 current.setCompletionTime(time);
                 current.setTurnaroundTime(current.getCompletionTime() - current.getArrivalTime());
                 current.setWaitingTime(current.getTurnaroundTime() - current.getBurstTime());
                 completed++;
-            } else {
-                readyQueue.add(current);
+            }
+            // Otherwise, requeue it
+            else {
+                readyQueue.offer(current);
             }
         }
 
-        return new SimulationResult(gantt, processes, time);
+        // Build and return the final result
+        return new SimulationResult(ganttChart, processes, time);
     }
 }
